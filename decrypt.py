@@ -16,7 +16,7 @@ except ImportError:
     maketrans = str.maketrans
 
 MAX_GOODNESS_LEVEL = 3  # 1-7
-MAX_BAD_WORDS_RATE = 0.65
+MAX_BAD_WORDS_RATE = 0.25
 
 if LANG:
     ABC = u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
@@ -150,8 +150,8 @@ class KeyFinder:
             letter = possible_letters[nextpos].pop()
             new_possible_letters = copy.deepcopy(possible_letters)
             for pos in range(len(ABC)):
-                new_possible_letters[pos] -= set([letter])
-            new_possible_letters[nextpos] = set([letter])
+                new_possible_letters[pos] -= {letter}
+            new_possible_letters[nextpos] = {letter}
             new_key = key[:nextpos] + letter + key[nextpos + 1:]
             self.recursive_calc_key(new_key, new_possible_letters, level + 1)
 
@@ -169,6 +169,14 @@ class KeyFinder:
             if minpoints <= self.points_threshhold:
                 return self.found_keys
 
+            # Atbash next.
+            key = ABC[::-1]
+            points = self.get_key_points(key)
+            if points <= self.points_threshhold:
+                self.found_keys[key] = points
+                return self.found_keys
+
+            # All permutations.
             possible_letters = [set(ABC) for _ in range(len(ABC))]
             self.recursive_calc_key("." * len(ABC), possible_letters, 1)
         return self.found_keys
@@ -213,11 +221,12 @@ def main():
         decrypted = (open(filename).read()
                      .decode("string_escape")
                      .decode("utf-8")
+                     .lower()
                      .translate(trans)
                      .encode("utf-8"))
     else:
         trans = maketrans(ABC, best_key)
-        decrypted = open(filename).read().translate(trans)
+        decrypted = open(filename).read().lower().translate(trans)
 
     with open("decrypted.txt", "w") as decryptedFile:
         decryptedFile.write(decrypted)
