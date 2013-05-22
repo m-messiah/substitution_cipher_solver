@@ -15,8 +15,8 @@ try:
 except ImportError:
     maketrans = str.maketrans
 
-MAX_GOODNESS_LEVEL = 2  # 1-7
-MAX_BAD_WORDS_RATE = 0.06
+MAX_GOODNESS_LEVEL = 3  # 1-7
+MAX_BAD_WORDS_RATE = 0.65
 
 if LANG:
     ABC = u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
@@ -121,11 +121,11 @@ class KeyFinder:
 
     def recursive_calc_key(self, key, possible_letters, level):
         """ Tries to place a possible letters on places with dots """
-        print(u"Level: {:3}, key: {}".format(level, key))
+        print(u"\rLevel: {:3}, key: {}".format(level, key)),
 
         if '.' not in key:
             points = self.get_key_points(key)
-            print(u"Found: {}, bad words: {}".format(key, points))
+            print(u"\nFound: {}, bad words: {}".format(key, points))
             self.found_keys[key] = points
             return
 
@@ -158,9 +158,16 @@ class KeyFinder:
     def find(self):
         if not self.found_keys:
             # Caesar firstly.
+            minpoints = 1000
             for i in range(len(ABC)):
                 key = ABC[i:] + ABC[:i]
-                self.found_keys[key] = self.get_key_points(key)
+                points = self.get_key_points(key)
+                if points <= self.points_threshhold:
+                    self.found_keys[key] = points
+                    minpoints = points if points < minpoints else minpoints
+
+            if minpoints <= self.points_threshhold:
+                return self.found_keys
 
             possible_letters = [set(ABC) for _ in range(len(ABC))]
             self.recursive_calc_key("." * len(ABC), possible_letters, 1)
@@ -169,15 +176,16 @@ class KeyFinder:
 
 def main():
     print(u"Selected {} language".format("RUS" if LANG else "EN"))
+    filename = "encrypted{}.txt".format("R" if LANG else "")
     if LANG:
-        enc_text = (open("encryptedR.txt").read()
+        enc_text = (open(filename).read()
                     .decode("string_escape")
                     .decode("utf-8")
                     .lower())
-        enc_words = re.findall(ur"[а-я']+", enc_text, re.UNICODE)
+        enc_words = re.findall(ur"[а-яё']+", enc_text, re.UNICODE)
 
     else:
-        enc_text = open("encrypted.txt").read().lower()
+        enc_text = open(filename).read().lower()
         enc_words = re.findall(r"[a-z']+", enc_text)
 
     # skip the words with apostrophes
@@ -185,10 +193,11 @@ def main():
                  if "'" not in word and
                     len(word) <= WordList.MAX_WORD_LENGTH_TO_CACHE
                  ]
+
     enc_words = enc_words[:500]
 
-    print(u"Loaded {} words in encrypted{}.txt, loading dicts"
-          .format(len(enc_words), "R" if LANG else ""))
+    print(u"Loaded {} words in {}, loading dicts"
+          .format(len(enc_words), filename))
 
     keys = KeyFinder(enc_words).find()
     if not keys:
@@ -201,14 +210,14 @@ def main():
                                                            keys[best_key]))
     if LANG:
         trans = dict((ord(a), ord(b)) for a, b in zip(ABC, best_key))
-        decrypted = (open("encryptedR.txt").read()
+        decrypted = (open(filename).read()
                      .decode("string_escape")
                      .decode("utf-8")
                      .translate(trans)
                      .encode("utf-8"))
     else:
         trans = maketrans(ABC, best_key)
-        decrypted = open("encrypted.txt").read().translate(trans)
+        decrypted = open(filename).read().translate(trans)
 
     with open("decrypted.txt", "w") as decryptedFile:
         decryptedFile.write(decrypted)
