@@ -15,7 +15,7 @@ try:
 except ImportError:
     maketrans = str.maketrans
 
-MAX_GOODNESS_LEVEL = 3  # 1-7
+MAX_GOODNESS_LEVEL = 5  # 1-7
 MAX_BAD_WORDS_RATE = 0.25
 
 if LANG:
@@ -63,6 +63,7 @@ class WordList:
                         self.words[properties] = words
             except IOError:
                 continue
+        print(u"All dictionaries loaded.\n{}".format("=" * 10))
 
     def find_word_by_template(self, template, different_chars):
         """ Finds the word in the dict by template. Template can contain
@@ -240,5 +241,5 @@ if __name__ == "__main__":
         #import cProfile
         #cProfile.run('main()')
         main()
-    except Exception as E:
-        print("Error: %s" % E)
+    except Exception as e:
+        print("Error: %s" % e)
