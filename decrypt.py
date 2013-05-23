@@ -15,8 +15,8 @@ try:
 except ImportError:
     maketrans = str.maketrans
 
-MAX_GOODNESS_LEVEL = 5  # 1-7
-MAX_BAD_WORDS_RATE = 0.25
+MAX_GOODNESS_LEVEL = 4  # 1-7
+MAX_BAD_WORDS_RATE = 0.66
 
 if LANG:
     ABC = u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
@@ -34,8 +34,8 @@ class WordList:
 
         self.words = {}
         for goodness in range(MAX_GOODNESS_LEVEL):
-            print u"Loaded {}{}.txt dictionary".format("r" if LANG else "",
-                                                       goodness)
+            print u"Loading {}{}.txt dictionary...".format("r" if LANG else "",
+                                                           goodness)
             if LANG:
                 goodness = "r{}".format(goodness)
             try:
@@ -99,15 +99,15 @@ class KeyFinder:
         self.points_threshhold = int(len(enc_words) * MAX_BAD_WORDS_RATE)
         self.dict_wordlist = WordList()
         self.enc_words = enc_words
-        self.different_chars = {}
+        self.different_chars = dict(zip(enc_words,
+                                        map(len, map(set, enc_words))))
         self.found_keys = {}  # key => bad words
-        for enc_word in enc_words:
-            self.different_chars[enc_word] = len(set(enc_word))
+        self.lenABC = range(len(ABC))
 
     def get_key_points(self, key):
         """ The key is alpha string with dots on unknown places """
         if LANG:
-            trans = dict((ord(a), ord(b)) for a, b in zip(ABC, key))
+            trans = dict(zip(map(ord, ABC), map(ord, key)))
         else:
             trans = maketrans(ABC, key)
         points = 0
@@ -133,24 +133,27 @@ class KeyFinder:
         nextpos = -1  # a pos with a minimum length of possible letters
         minlen = len(ABC) + 1
 
-        for pos in range(len(ABC)):
-            if key[pos] == ".":
-                for letter in list(possible_letters[pos]):
-                    new_key = key[:pos] + letter + key[pos + 1:]
+        for pos in self.lenABC:
+            if key[pos] != ".":
+                continue
+            for letter in list(possible_letters[pos]):
+                new_key = key[:pos] + letter + key[pos + 1:]
 
-                    if self.get_key_points(new_key) > self.points_threshhold:
-                        possible_letters[pos].remove(letter)
-                        if not possible_letters[pos]:
-                            return
+                if self.get_key_points(new_key) > self.points_threshhold:
+                    possible_letters[pos].remove(letter)
+                    if not possible_letters[pos]:
+                        return
 
                 if len(possible_letters[pos]) < minlen:
                     minlen = len(possible_letters[pos])
                     nextpos = pos
+        if nextpos == -1:
+            return
 
         while possible_letters[nextpos]:
             letter = possible_letters[nextpos].pop()
             new_possible_letters = copy.deepcopy(possible_letters)
-            for pos in range(len(ABC)):
+            for pos in self.lenABC:
                 new_possible_letters[pos] -= {letter}
             new_possible_letters[nextpos] = {letter}
             new_key = key[:nextpos] + letter + key[nextpos + 1:]
@@ -158,28 +161,24 @@ class KeyFinder:
 
     def find(self):
         if not self.found_keys:
-            # Caesar firstly.
+            # Caesar firstly (forward and reverse(Atbash-Caesar)).
             minpoints = 1000
-            for i in range(len(ABC)):
-                key = ABC[i:] + ABC[:i]
-                points = self.get_key_points(key)
-                if points <= self.points_threshhold:
-                    self.found_keys[key] = points
-                    minpoints = points if points < minpoints else minpoints
-
+            keys = [ABC, ABC[::-1]]
+            for i in self.lenABC:
+                for key in keys:
+                    key = key[i:] + key[:i]
+                    points = self.get_key_points(key)
+                    if points <= self.points_threshhold:
+                        self.found_keys[key] = points
+                        minpoints = points if points < minpoints else minpoints
             if minpoints <= self.points_threshhold:
                 return self.found_keys
 
-            # Atbash next.
-            key = ABC[::-1]
-            points = self.get_key_points(key)
-            if points <= self.points_threshhold:
-                self.found_keys[key] = points
-                return self.found_keys
-
             # All permutations.
-            possible_letters = [set(ABC) for _ in range(len(ABC))]
-            self.recursive_calc_key("." * len(ABC), possible_letters, 1)
+            print(u"It's not the Caesar or Atbash. Try to substitute.")
+            possible_letters = [set(ABC) for _ in self.lenABC]
+            self.recursive_calc_key("." * len(possible_letters),
+                                    possible_letters, 1)
         return self.found_keys
 
 
@@ -203,7 +202,7 @@ def main():
                     len(word) <= WordList.MAX_WORD_LENGTH_TO_CACHE
                  ]
 
-    enc_words = enc_words[:500]
+    enc_words = enc_words[:200]
 
     print(u"Loaded {} words in {}, loading dicts"
           .format(len(enc_words), filename))
@@ -218,7 +217,7 @@ def main():
                                                            best_key,
                                                            keys[best_key]))
     if LANG:
-        trans = dict((ord(a), ord(b)) for a, b in zip(ABC, best_key))
+        trans = dict(zip(map(ord, ABC), map(ord, best_key)))
         decrypted = (open(filename).read()
                      .decode("string_escape")
                      .decode("utf-8")
