@@ -76,18 +76,11 @@ class WordList:
         words = self.words[properties]
 
         if properties[0] > WordList.MAX_WORD_LENGTH_TO_CACHE:
-            if LANG:
-                template = re.compile(template, re.UNICODE)
-            else:
-                template = re.compile(template)
+            template = re.compile(template, re.UNICODE if LANG else None)
 
             for word in words:
-                if LANG:
-                    if template.match(word, re.UNICODE):
-                        return True
-                else:
-                    if template.match(word):
-                        return True
+                if template.match(word, re.UNICODE if LANG else None):
+                    return True
         else:
             if template in words:
                 return True
@@ -122,11 +115,11 @@ class KeyFinder:
 
     def recursive_calc_key(self, key, possible_letters, level):
         """ Tries to place a possible letters on places with dots """
-        print(u"\rLevel: {:3}, key: {}".format(level, key)),
+        print(u"Level: {:3}, key: {}".format(level, key))
 
         if '.' not in key:
             points = self.get_key_points(key)
-            print(u"\nFound: {}, bad words: {}".format(key, points))
+            print(u"\tFound: {}, bad words: {}".format(key, points))
             self.found_keys[key] = points
             return
 
