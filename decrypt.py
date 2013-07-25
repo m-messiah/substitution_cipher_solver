@@ -15,8 +15,8 @@ try:
 except ImportError:
     maketrans = str.maketrans
 
-MAX_GOODNESS_LEVEL = 4  # 1-7
-MAX_BAD_WORDS_RATE = 0.66
+MAX_GOODNESS_LEVEL = 2  # 1-7
+MAX_BAD_WORDS_RATE = 0.06
 
 if LANG:
     ABC = u'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
@@ -34,8 +34,8 @@ class WordList:
 
         self.words = {}
         for goodness in range(MAX_GOODNESS_LEVEL):
-            print u"Loading {}{}.txt dictionary...".format("r" if LANG else "",
-                                                           goodness)
+            print(u"Loading {}{}.txt dictionary...".format("r" if LANG else "",
+                                                           goodness))
             if LANG:
                 goodness = "r{}".format(goodness)
             try:
@@ -192,13 +192,12 @@ def main():
     # skip the words with apostrophes
     enc_words = [word for word in enc_words
                  if "'" not in word and
-                    len(word) <= WordList.MAX_WORD_LENGTH_TO_CACHE
-                 ]
+                    len(word) <= WordList.MAX_WORD_LENGTH_TO_CACHE]
 
     enc_words = enc_words[:200]
 
-    print(u"Loaded {} words in {}, loading dicts"
-          .format(len(enc_words), filename))
+    print(u"Loaded {} words in {}, loading dicts".format(len(enc_words),
+                                                         filename))
 
     keys = KeyFinder(enc_words).find()
     if not keys:
